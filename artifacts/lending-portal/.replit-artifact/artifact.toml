@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Lending Portal"
+version = "1.0.0"
+id = "artifacts/lending-portal"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22216
+
+[services.development]
+run = "pnpm --filter @workspace/lending-portal run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lending-portal", "run", "build" ]
+publicDir = "artifacts/lending-portal/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22216"
+BASE_PATH = "/"

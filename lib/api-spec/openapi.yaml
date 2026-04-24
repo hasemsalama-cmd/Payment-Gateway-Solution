@@ -3,20 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Lending Portal API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: applications
+    description: Loan applications
+  - name: loans
+    description: Active loans and repayments
+  - name: dashboard
+    description: Dashboard summaries and analytics
+  - name: settings
+    description: Scoring rules configuration
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,306 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /applications:
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: List loan applications
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, denied, disbursed, all]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoanApplication"
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Submit a new loan application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationInput"
+      responses:
+        "201":
+          description: Application created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanApplication"
+
+  /applications/{id}:
+    get:
+      operationId: getApplication
+      tags: [applications]
+      summary: Get application detail by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Application detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanApplication"
+
+  /applications/by-reference/{referenceCode}:
+    get:
+      operationId: getApplicationByReference
+      tags: [applications]
+      summary: Look up application by reference code (customer status check)
+      parameters:
+        - name: referenceCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Application status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationStatusView"
+
+  /applications/{id}/decision:
+    post:
+      operationId: decideApplication
+      tags: [applications]
+      summary: Approve or deny an application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionInput"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanApplication"
+
+  /applications/{id}/disburse:
+    post:
+      operationId: disburseApplication
+      tags: [applications]
+      summary: Disburse an approved application and create a loan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Created loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+
+  /loans:
+    get:
+      operationId: listLoans
+      tags: [loans]
+      summary: List loans
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, paid, defaulted, all]
+      responses:
+        "200":
+          description: Loans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loan"
+
+  /loans/{id}:
+    get:
+      operationId: getLoan
+      tags: [loans]
+      summary: Get loan detail with schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Loan detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanDetail"
+
+  /loans/{id}/payments:
+    post:
+      operationId: recordPayment
+      tags: [loans]
+      summary: Record a payment toward a loan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPaymentInput"
+      responses:
+        "201":
+          description: Recorded payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Aggregated dashboard metrics
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Recent activity feed (latest 20 events)
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  /dashboard/risk-distribution:
+    get:
+      operationId: getRiskDistribution
+      tags: [dashboard]
+      summary: Buckets of applications by risk band
+      responses:
+        "200":
+          description: Risk buckets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RiskBucket"
+
+  /dashboard/monthly-volume:
+    get:
+      operationId: getMonthlyVolume
+      tags: [dashboard]
+      summary: Monthly disbursement and collection totals (last 6 months)
+      responses:
+        "200":
+          description: Monthly totals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlyVolumePoint"
+
+  /scoring/preview:
+    post:
+      operationId: previewScore
+      tags: [applications]
+      summary: Preview the score that would be assigned to a hypothetical application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationInput"
+      responses:
+        "200":
+          description: Score preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreResult"
+
+  /scoring/rules:
+    get:
+      operationId: getScoringRules
+      tags: [settings]
+      summary: Get current scoring rules
+      responses:
+        "200":
+          description: Rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringRules"
+    put:
+      operationId: updateScoringRules
+      tags: [settings]
+      summary: Update scoring rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoringRules"
+      responses:
+        "200":
+          description: Updated rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringRules"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +338,434 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    EmploymentStatus:
+      type: string
+      enum: [employed, self_employed, unemployed, retired, student]
+
+    ApplicationStatus:
+      type: string
+      enum: [pending, approved, denied, disbursed]
+
+    LoanStatus:
+      type: string
+      enum: [active, paid, defaulted]
+
+    Recommendation:
+      type: string
+      enum: [approve, review, deny]
+
+    CreateApplicationInput:
+      type: object
+      required:
+        - fullName
+        - email
+        - phone
+        - amountRequested
+        - termMonths
+        - purpose
+        - employmentStatus
+        - monthlyIncome
+        - monthlyExpenses
+        - existingDebt
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        amountRequested:
+          type: number
+          minimum: 100
+        termMonths:
+          type: integer
+          minimum: 3
+          maximum: 60
+        purpose:
+          type: string
+        employmentStatus:
+          $ref: "#/components/schemas/EmploymentStatus"
+        monthlyIncome:
+          type: number
+          minimum: 0
+        monthlyExpenses:
+          type: number
+          minimum: 0
+        existingDebt:
+          type: number
+          minimum: 0
+
+    ScoreFactor:
+      type: object
+      required: [label, impact, detail]
+      properties:
+        label:
+          type: string
+        impact:
+          type: integer
+        detail:
+          type: string
+
+    ScoreResult:
+      type: object
+      required:
+        - score
+        - recommendation
+        - suggestedInterestRate
+        - factors
+        - debtToIncomeRatio
+        - paymentToIncomeRatio
+      properties:
+        score:
+          type: integer
+        recommendation:
+          $ref: "#/components/schemas/Recommendation"
+        suggestedInterestRate:
+          type: number
+        factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreFactor"
+        debtToIncomeRatio:
+          type: number
+        paymentToIncomeRatio:
+          type: number
+
+    LoanApplication:
+      type: object
+      required:
+        - id
+        - referenceCode
+        - fullName
+        - email
+        - phone
+        - amountRequested
+        - termMonths
+        - purpose
+        - employmentStatus
+        - monthlyIncome
+        - monthlyExpenses
+        - existingDebt
+        - status
+        - score
+        - recommendation
+        - suggestedInterestRate
+        - debtToIncomeRatio
+        - paymentToIncomeRatio
+        - factors
+        - createdAt
+      properties:
+        id:
+          type: string
+        referenceCode:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        amountRequested:
+          type: number
+        termMonths:
+          type: integer
+        purpose:
+          type: string
+        employmentStatus:
+          $ref: "#/components/schemas/EmploymentStatus"
+        monthlyIncome:
+          type: number
+        monthlyExpenses:
+          type: number
+        existingDebt:
+          type: number
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        score:
+          type: integer
+        recommendation:
+          $ref: "#/components/schemas/Recommendation"
+        suggestedInterestRate:
+          type: number
+        debtToIncomeRatio:
+          type: number
+        paymentToIncomeRatio:
+          type: number
+        factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreFactor"
+        denialReason:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        decidedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApplicationStatusView:
+      type: object
+      required: [referenceCode, fullName, status, amountRequested, termMonths, createdAt]
+      properties:
+        referenceCode:
+          type: string
+        fullName:
+          type: string
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        amountRequested:
+          type: number
+        termMonths:
+          type: integer
+        approvedAmount:
+          type: number
+        suggestedInterestRate:
+          type: number
+        decidedAt:
+          type: string
+          format: date-time
+        denialReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    DecisionInput:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, deny]
+        approvedAmount:
+          type: number
+        interestRate:
+          type: number
+        denialReason:
+          type: string
+        decidedBy:
+          type: string
+
+    Loan:
+      type: object
+      required:
+        - id
+        - applicationId
+        - borrowerName
+        - principal
+        - interestRate
+        - termMonths
+        - monthlyPayment
+        - startDate
+        - status
+        - totalPaid
+        - balanceRemaining
+        - nextDueDate
+      properties:
+        id:
+          type: string
+        applicationId:
+          type: string
+        borrowerName:
+          type: string
+        principal:
+          type: number
+        interestRate:
+          type: number
+        termMonths:
+          type: integer
+        monthlyPayment:
+          type: number
+        startDate:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/LoanStatus"
+        totalPaid:
+          type: number
+        balanceRemaining:
+          type: number
+        nextDueDate:
+          type: string
+          format: date
+
+    Payment:
+      type: object
+      required: [id, loanId, amount, paidAt, method]
+      properties:
+        id:
+          type: string
+        loanId:
+          type: string
+        amount:
+          type: number
+        paidAt:
+          type: string
+          format: date-time
+        method:
+          type: string
+        notes:
+          type: string
+
+    ScheduleEntry:
+      type: object
+      required: [installment, dueDate, amount, principal, interest, balance, paid]
+      properties:
+        installment:
+          type: integer
+        dueDate:
+          type: string
+          format: date
+        amount:
+          type: number
+        principal:
+          type: number
+        interest:
+          type: number
+        balance:
+          type: number
+        paid:
+          type: boolean
+
+    LoanDetail:
+      type: object
+      required: [loan, payments, schedule]
+      properties:
+        loan:
+          $ref: "#/components/schemas/Loan"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        schedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleEntry"
+
+    RecordPaymentInput:
+      type: object
+      required: [amount, method]
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+        method:
+          type: string
+          enum: [cash, bank_transfer, card, other]
+        notes:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+
+    DashboardSummary:
+      type: object
+      required:
+        - pendingApplications
+        - approvedThisMonth
+        - activeLoans
+        - totalDisbursed
+        - totalCollected
+        - outstandingPrincipal
+        - defaultRate
+        - averageLoanSize
+        - approvalRate
+      properties:
+        pendingApplications:
+          type: integer
+        approvedThisMonth:
+          type: integer
+        activeLoans:
+          type: integer
+        totalDisbursed:
+          type: number
+        totalCollected:
+          type: number
+        outstandingPrincipal:
+          type: number
+        defaultRate:
+          type: number
+        averageLoanSize:
+          type: number
+        approvalRate:
+          type: number
+
+    ActivityEvent:
+      type: object
+      required: [id, type, message, occurredAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [application_submitted, application_approved, application_denied, loan_disbursed, payment_received]
+        message:
+          type: string
+        amount:
+          type: number
+        applicationId:
+          type: string
+        loanId:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+
+    RiskBucket:
+      type: object
+      required: [band, label, count, minScore, maxScore]
+      properties:
+        band:
+          type: string
+          enum: [low, medium, high, very_high]
+        label:
+          type: string
+        count:
+          type: integer
+        minScore:
+          type: integer
+        maxScore:
+          type: integer
+
+    MonthlyVolumePoint:
+      type: object
+      required: [month, disbursed, collected]
+      properties:
+        month:
+          type: string
+        disbursed:
+          type: number
+        collected:
+          type: number
+
+    ScoringRules:
+      type: object
+      required:
+        - approveThreshold
+        - reviewThreshold
+        - maxDebtToIncomeRatio
+        - maxPaymentToIncomeRatio
+        - baseInterestRate
+        - riskPremiumPerBand
+      properties:
+        approveThreshold:
+          type: integer
+          description: Minimum score for auto-approve recommendation
+        reviewThreshold:
+          type: integer
+          description: Minimum score for manual review (below this = deny)
+        maxDebtToIncomeRatio:
+          type: number
+        maxPaymentToIncomeRatio:
+          type: number
+        baseInterestRate:
+          type: number
+        riskPremiumPerBand:
+          type: number

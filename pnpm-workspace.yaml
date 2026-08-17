@@ -42,6 +42,13 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Security vulnerability fixes
+  picomatch: '>=2.3.2'
+  path-to-regexp: '>=8.4.0'
+  lodash: '>=4.18.1'
+  yaml: '>=2.9.0'
+  brace-expansion: '>=2.1.0'
+  postcss: '>=8.5.26'
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'
